@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 @import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap");
 
 * {
@@ -329,17 +331,11 @@ button {
 
 .lcd-clock {
   position: relative;
-
   z-index: 2;
-
   color: #272c27;
-
   font-family: "DM Mono", monospace;
-
   font-size: 11px;
-
   font-weight: 500;
-
   letter-spacing: 1px;
 }
 
@@ -378,13 +374,11 @@ button {
 
 .lcd-digits span {
   width: 38px;
-
   text-align: center;
 }
 
 .lcd-digits .lcd-colon {
   width: 19px;
-
   margin: 0 2px;
 
   font-size: 43px;
@@ -398,25 +392,15 @@ button {
 
 .lcd-status {
   position: absolute;
-
   z-index: 2;
-
-  bottom: 29px;
-
+  bottom: 33px;
   left: 50%;
-
   transform: translateX(-50%);
-
   white-space: nowrap;
-
   color: #343a34;
-
   font-family: "DM Mono", monospace;
-
-  font-size: 7px;
-
+  font-size: 9px;
   font-weight: 500;
-
   letter-spacing: 0.8px;
 }
 
@@ -426,26 +410,16 @@ button {
 
 .lcd-markers {
   position: absolute;
-
   z-index: 2;
-
   left: 22px;
   right: 22px;
-
   bottom: 9px;
-
   display: flex;
-
   justify-content: space-between;
-
   color: #333833;
-
   font-family: "DM Mono", monospace;
-
   font-size: 8px;
-
   font-weight: 500;
-
   letter-spacing: 2px;
 }
 
@@ -467,27 +441,17 @@ button {
 .channel {
   width: 96px;
   height: 26px;
-
   border: 1px solid #b7b7b2;
-
   border-radius: 14px;
-
   background: linear-gradient(to bottom, #ffffff, #e7e7e4);
-
   color: #666;
-
   font-size: 7px;
-
   font-weight: 800;
-
   letter-spacing: 0.6px;
-
   cursor: pointer;
-
   box-shadow:
     0 2px 3px rgba(0, 0, 0, 0.16),
     inset 0 1px 1px #fff;
-
   transition:
     transform 0.1s ease,
     background 0.1s ease;
@@ -499,14 +463,32 @@ button {
 
 .channel.selected {
   color: #252925;
-
   background: linear-gradient(to bottom, #d8ddd7, #b4bcb2);
-
   box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.14);
 }
 
 .channel:active {
   transform: translateY(1px);
+}
+
+/* buttons */
+.buttons {
+  width: 100%;
+  height: 36px;
+  border: 1px solid #b7b7b2;
+  border-radius: 18px;
+  background: linear-gradient(to bottom, #ffffff, #e7e7e4);
+  color: #666;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  box-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.16),
+    inset 0 1px 1px #fff;
+  transition:
+    transform 0.1s ease,
+    background 0.1s ease;
 }
 
 /* =========================================================
@@ -527,13 +509,9 @@ button {
 
 .small-control {
   appearance: none;
-
   border: 0;
-
   background: transparent;
-
   padding: 0;
-
   cursor: pointer;
 
   display: flex;
@@ -547,30 +525,21 @@ button {
 
 .control-label {
   color: #555;
-
   font-size: 8px;
-
   font-weight: 800;
-
   letter-spacing: 0.3px;
 }
 
 .small-button {
   width: 56px;
   height: 22px;
-
   display: block;
-
   border-radius: 50%;
-
   background: linear-gradient(to bottom, #fff, #e8e8e5 45%, #c7c7c3);
-
   border: 1px solid #b5b5b0;
-
   box-shadow:
     0 2px 3px rgba(0, 0, 0, 0.2),
     inset 0 1px 1px #fff;
-
   transition: transform 0.08s ease;
 }
 
