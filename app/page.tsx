@@ -236,9 +236,9 @@ const Timer = () => {
             <div className="flex justify-between p-3">
               <p className="lcd-clock uppercase">{mode}</p>
 
-              <p className="text-[12px]">
+              {/* <p className="text-[12px]">
                 Today's Total Study: {formatTotalStudy(totalStudy)}
-              </p>
+              </p> */}
             </div>
 
             {/* Stopwatch */}
