@@ -1,27 +1,91 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-const Timer = () => {
-  const [mode] = useState("stopwatch");
+type Mode = "timer" | "stopwatch";
 
-  // Today's total study time in seconds
-  const [totalStudy, setTotalStudy] = useState(0);
+type AddSubButtonsProps = {
+  label: string;
+  onChange: (amount: number) => void;
+};
+
+const AddSubButtons = ({ label, onChange }: AddSubButtonsProps) => {
+  return (
+    <div className="text-center">
+      <span className="control-label">{label}</span>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="small-button cursor-pointer mt-1"
+          onClick={() => onChange(1)}
+        >
+          +1
+        </button>
+
+        <button
+          type="button"
+          className="small-button cursor-pointer mt-1"
+          onClick={() => onChange(-1)}
+        >
+          -1
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const Trail = () => {
+  const [mode, setMode] = useState<Mode>("timer");
+
+  const [isRunning, setIsRunning] = useState(false);
+
+  // Default timer = 25 minutes
+  const [defaultSeconds, setDefaultSeconds] = useState(1500);
+
+  // Timer / Stopwatch displayed seconds
+  const [seconds, setSeconds] = useState(1500);
 
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
 
-  // Stopwatch
-  const [hours, setHours] = useState(0);
-  const [minutes, setMinutes] = useState(0);
-  const [seconds, setSeconds] = useState(0);
+  // Today's total study time
+  const [totalStudySeconds, setTotalStudySeconds] = useState(0);
 
-  const [isRunning, setIsRunning] = useState(false);
+  // ==========================================
+  // ACCURATE TIME TRACKING
+  // ==========================================
 
-  // =========================
-  // CURRENT DATE + TIME
-  // =========================
+  // When current running session started
+  const startTimeRef = useRef<number | null>(null);
+
+  // Value of timer/stopwatch when Start was clicked
+  const startingSecondsRef = useRef(0);
+
+  // Used for calculating study time accurately
+  const studyStartTimeRef = useRef<number | null>(null);
+
+  // Total study time before current running session
+  const previousStudySecondsRef = useRef(0);
+
+  // ==========================================
+  // GET TODAY'S LOCAL DATE
+  // ==========================================
+
+  const getToday = () => {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  // ==========================================
+  // CURRENT TIME & DATE
+  // ==========================================
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -41,178 +105,338 @@ const Timer = () => {
 
     const interval = setInterval(updateDateTime, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
-  // =========================
-  // LOAD TODAY'S STUDY
-  // =========================
+  // ==========================================
+  // LOAD TODAY'S STUDY DATA
+  // ==========================================
 
   useEffect(() => {
-    const today = new Date().toLocaleDateString("en-GB");
+    const today = getToday();
 
-    const savedData = localStorage.getItem("totalStudy");
+    const savedData = localStorage.getItem("studyData");
 
     if (savedData) {
-      const parsedData = JSON.parse(savedData);
+      try {
+        const data = JSON.parse(savedData);
 
-      if (parsedData.date === today) {
-        setTotalStudy(parsedData.seconds);
-      } else {
-        // New day → reset total study
-        localStorage.setItem(
-          "totalStudy",
-          JSON.stringify({
+        if (data.date === today) {
+          setTotalStudySeconds(data.totalSeconds);
+        } else {
+          const newData = {
             date: today,
-            seconds: 0,
-          }),
-        );
+            totalSeconds: 0,
+          };
 
-        setTotalStudy(0);
+          localStorage.setItem("studyData", JSON.stringify(newData));
+
+          setTotalStudySeconds(0);
+        }
+      } catch (error) {
+        console.error("Error reading study data:", error);
+
+        setTotalStudySeconds(0);
       }
     } else {
-      localStorage.setItem(
-        "totalStudy",
-        JSON.stringify({
-          date: today,
-          seconds: 0,
-        }),
-      );
+      const newData = {
+        date: today,
+        totalSeconds: 0,
+      };
+
+      localStorage.setItem("studyData", JSON.stringify(newData));
+
+      setTotalStudySeconds(0);
     }
   }, []);
 
-  // =========================
-  // CHECK FOR NEW DAY
-  // =========================
+  // ==========================================
+  // START / PAUSE
+  // ==========================================
 
-  useEffect(() => {
-    const checkNewDay = () => {
-      const today = new Date().toLocaleDateString("en-GB");
+  const buttonHandler = () => {
+    // Don't start an empty timer
+    if (mode === "timer" && seconds === 0) {
+      return;
+    }
 
-      const savedData = localStorage.getItem("totalStudy");
+    // ==========================
+    // PAUSE
+    // ==========================
 
-      if (!savedData) return;
+    if (isRunning) {
+      const now = Date.now();
 
-      const parsedData = JSON.parse(savedData);
+      // Calculate exact elapsed seconds
+      if (startTimeRef.current !== null) {
+        const elapsedSeconds = Math.floor((now - startTimeRef.current) / 1000);
 
-      if (parsedData.date !== today) {
-        const newData = {
-          date: today,
-          seconds: 0,
-        };
+        if (mode === "timer") {
+          const newSeconds = Math.max(
+            0,
+            startingSecondsRef.current - elapsedSeconds,
+          );
 
-        localStorage.setItem("totalStudy", JSON.stringify(newData));
+          setSeconds(newSeconds);
+        } else {
+          const newSeconds = startingSecondsRef.current + elapsedSeconds;
 
-        setTotalStudy(0);
-      }
-    };
-
-    const interval = setInterval(checkNewDay, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // =========================
-  // STOPWATCH
-  // =========================
-
-  useEffect(() => {
-    if (!isRunning) return;
-
-    const interval = setInterval(() => {
-      setSeconds((prevSeconds) => {
-        if (prevSeconds === 59) {
-          setMinutes((prevMinutes) => {
-            if (prevMinutes === 59) {
-              setHours((prevHours) => prevHours + 1);
-              return 0;
-            }
-
-            return prevMinutes + 1;
-          });
-
-          return 0;
+          setSeconds(newSeconds);
         }
+      }
 
-        return prevSeconds + 1;
-      });
-    }, 1000);
+      // Update total study accurately
+      if (studyStartTimeRef.current !== null) {
+        const studyElapsedSeconds = Math.floor(
+          (now - studyStartTimeRef.current) / 1000,
+        );
 
-    return () => clearInterval(interval);
-  }, [isRunning]);
+        const newTotal = previousStudySecondsRef.current + studyElapsedSeconds;
 
-  // =========================
-  // START
-  // =========================
+        setTotalStudySeconds(newTotal);
 
-  const handleStart = () => {
+        localStorage.setItem(
+          "studyData",
+          JSON.stringify({
+            date: getToday(),
+            totalSeconds: newTotal,
+          }),
+        );
+      }
+
+      setIsRunning(false);
+
+      startTimeRef.current = null;
+      studyStartTimeRef.current = null;
+
+      return;
+    }
+
+    // ==========================
+    // START
+    // ==========================
+
+    const now = Date.now();
+
+    startTimeRef.current = now;
+
+    startingSecondsRef.current = seconds;
+
+    // Save today's study time before starting this session
+    const savedData = localStorage.getItem("studyData");
+
+    let previousTotal = totalStudySeconds;
+
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+
+        if (data.date === getToday()) {
+          previousTotal = data.totalSeconds || 0;
+        } else {
+          previousTotal = 0;
+        }
+      } catch {
+        previousTotal = totalStudySeconds;
+      }
+    }
+
+    previousStudySecondsRef.current = previousTotal;
+    studyStartTimeRef.current = now;
+
     setIsRunning(true);
   };
 
-  // =========================
-  // PAUSE
-  // =========================
+  // ==========================================
+  // RESET
+  // ==========================================
 
-  const handlePause = () => {
+  const resetHandler = () => {
     setIsRunning(false);
 
-    const sessionSeconds = hours * 60 * 60 + minutes * 60 + seconds;
+    startTimeRef.current = null;
+    studyStartTimeRef.current = null;
 
-    const today = new Date().toLocaleDateString("en-GB");
-
-    const savedData = localStorage.getItem("totalStudy");
-
-    let previousTotal = 0;
-
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-
-      if (parsedData.date === today) {
-        previousTotal = parsedData.seconds;
-      }
+    if (mode === "timer") {
+      setSeconds(defaultSeconds);
+    } else {
+      setSeconds(0);
     }
-
-    const newTotal = previousTotal + sessionSeconds;
-
-    localStorage.setItem(
-      "totalStudy",
-      JSON.stringify({
-        date: today,
-        seconds: newTotal,
-      }),
-    );
-
-    setTotalStudy(newTotal);
   };
 
-  // =========================
-  // RESET
-  // =========================
+  // ==========================================
+  // CHANGE TIMER DURATION
+  // ==========================================
 
-  const handleReset = () => {
+  const changeTimer = (amount: number) => {
+    // Don't change timer while running
+    if (isRunning) {
+      return;
+    }
+
+    setSeconds((prev) => {
+      const newValue = Math.max(0, prev + amount);
+
+      setDefaultSeconds(newValue);
+
+      return newValue;
+    });
+  };
+
+  // ==========================================
+  // ACCURATE TIMER / STOPWATCH
+  // ==========================================
+
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+
+    const updateTimer = () => {
+      if (startTimeRef.current === null) {
+        return;
+      }
+
+      const now = Date.now();
+
+      // Exact elapsed seconds since Start
+      const elapsedSeconds = Math.floor((now - startTimeRef.current) / 1000);
+
+      // ==========================================
+      // TIMER
+      // ==========================================
+
+      if (mode === "timer") {
+        const newSeconds = Math.max(
+          0,
+          startingSecondsRef.current - elapsedSeconds,
+        );
+
+        setSeconds(newSeconds);
+
+        // Timer finished
+        if (newSeconds === 0) {
+          // Calculate final study time
+          if (studyStartTimeRef.current !== null) {
+            const studyElapsedSeconds = Math.floor(
+              (now - studyStartTimeRef.current) / 1000,
+            );
+
+            const newTotal =
+              previousStudySecondsRef.current + studyElapsedSeconds;
+
+            setTotalStudySeconds(newTotal);
+
+            localStorage.setItem(
+              "studyData",
+              JSON.stringify({
+                date: getToday(),
+                totalSeconds: newTotal,
+              }),
+            );
+          }
+
+          setIsRunning(false);
+
+          startTimeRef.current = null;
+          studyStartTimeRef.current = null;
+        }
+      }
+
+      // ==========================================
+      // STOPWATCH
+      // ==========================================
+      else {
+        const newSeconds = startingSecondsRef.current + elapsedSeconds;
+
+        setSeconds(newSeconds);
+      }
+
+      // ==========================================
+      // UPDATE TODAY'S STUDY TIME
+      // ==========================================
+
+      if (studyStartTimeRef.current !== null) {
+        const studyElapsedSeconds = Math.floor(
+          (now - studyStartTimeRef.current) / 1000,
+        );
+
+        const newTotal = previousStudySecondsRef.current + studyElapsedSeconds;
+
+        setTotalStudySeconds(newTotal);
+
+        localStorage.setItem(
+          "studyData",
+          JSON.stringify({
+            date: getToday(),
+            totalSeconds: newTotal,
+          }),
+        );
+      }
+    };
+
+    // UI update every 250ms.
+    // Actual time is still calculated using Date.now().
+    const interval = setInterval(updateTimer, 250);
+
+    updateTimer();
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isRunning, mode]);
+
+  // ==========================================
+  // TOTAL STUDY TIME
+  // ==========================================
+
+  const totalStudyHours = Math.floor(totalStudySeconds / 3600);
+
+  const totalStudyMinutes = Math.floor((totalStudySeconds % 3600) / 60);
+
+  // ==========================================
+  // SWITCH TO TIMER
+  // ==========================================
+
+  const handleTimerMode = () => {
     setIsRunning(false);
 
-    setHours(0);
-    setMinutes(0);
+    startTimeRef.current = null;
+    studyStartTimeRef.current = null;
+
+    setMode("timer");
+    setSeconds(defaultSeconds);
+  };
+
+  // ==========================================
+  // SWITCH TO STOPWATCH
+  // ==========================================
+
+  const handleStopwatchMode = () => {
+    setIsRunning(false);
+
+    startTimeRef.current = null;
+    studyStartTimeRef.current = null;
+
+    setMode("stopwatch");
     setSeconds(0);
   };
 
-  // =========================
-  // FORMAT TOTAL STUDY
-  // =========================
+  // ==========================================
+  // CONVERT SECONDS TO HH:MM:SS
+  // ==========================================
 
-  const formatTotalStudy = (totalSeconds: number) => {
-    const hours = Math.floor(totalSeconds / 3600);
+  const hours = Math.floor(seconds / 3600);
 
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const minutes = Math.floor((seconds % 3600) / 60);
 
-    const seconds = totalSeconds % 60;
+  const remainingSeconds = seconds % 60;
 
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0",
-    )}:${String(seconds).padStart(2, "0")}`;
-  };
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
     <>
@@ -228,7 +452,9 @@ const Timer = () => {
         <div className="border p-5 pb-8 rounded-2xl w-85 bg-purple-100 relative">
           <span className="top-sensor mt-1"></span>
 
-          {/* LCD DISPLAY */}
+          {/* =========================
+              LCD DISPLAY
+          ========================= */}
 
           <div className="border-4 mt-3 h-45 rounded-xl bg-[linear-gradient(135deg,#d0d5ce_0%,#b3bbb3_48%,#99a19a_100%)] relative">
             {/* Mode + Today's Study */}
@@ -236,17 +462,18 @@ const Timer = () => {
             <div className="flex justify-between p-3">
               <p className="lcd-clock uppercase">{mode}</p>
 
-              {/* <p className="text-[12px]">
-                Today's Total Study: {formatTotalStudy(totalStudy)}
-              </p> */}
+              <p className="text-[12px]">
+                Today's Total Study: {String(totalStudyHours).padStart(2, "0")}:
+                {String(totalStudyMinutes).padStart(2, "0")}
+              </p>
             </div>
 
-            {/* Stopwatch */}
+            {/* Timer / Stopwatch */}
 
             <div className="lcd-digits" aria-live="polite">
               {String(hours).padStart(2, "0")}:
               {String(minutes).padStart(2, "0")}:
-              {String(seconds).padStart(2, "0")}
+              {String(remainingSeconds).padStart(2, "0")}
             </div>
 
             {/* Current Date + Time */}
@@ -266,34 +493,58 @@ const Timer = () => {
             </div>
           </div>
 
-          {/* CONTROLS */}
+          {/* =========================
+              MODES
+          ========================= */}
+
+          <div className="flex justify-center gap-5 mt-5">
+            <button
+              type="button"
+              className={`channel ${mode === "timer" ? "selected" : ""}`}
+              onClick={handleTimerMode}
+            >
+              TIMER
+            </button>
+
+            <button
+              type="button"
+              className={`channel ${mode === "stopwatch" ? "selected" : ""}`}
+              onClick={handleStopwatchMode}
+            >
+              STOPWATCH
+            </button>
+          </div>
+
+          {/* =========================
+              TIMER CONTROLS
+          ========================= */}
+
+          {mode === "timer" && (
+            <div className="flex justify-center gap-8 mt-5">
+              <AddSubButtons
+                label="HOUR"
+                onChange={(amount) => changeTimer(amount * 3600)}
+              />
+
+              <AddSubButtons
+                label="MIN"
+                onChange={(amount) => changeTimer(amount * 60)}
+              />
+
+              <AddSubButtons label="SEC" onChange={changeTimer} />
+            </div>
+          )}
+
+          {/* =========================
+              START / RESET
+          ========================= */}
 
           <div className="flex justify-center gap-5 mt-6">
-            {/* START */}
-
-            <button
-              type="button"
-              className="buttons"
-              onClick={handleStart}
-              disabled={isRunning}
-            >
-              Start
+            <button type="button" className="buttons" onClick={buttonHandler}>
+              {isRunning ? "Pause" : "Start"}
             </button>
 
-            {/* PAUSE */}
-
-            <button
-              type="button"
-              className="buttons"
-              onClick={handlePause}
-              disabled={!isRunning}
-            >
-              Pause
-            </button>
-
-            {/* RESET */}
-
-            <button type="button" className="buttons" onClick={handleReset}>
+            <button type="button" className="buttons" onClick={resetHandler}>
               Reset
             </button>
           </div>
@@ -303,4 +554,4 @@ const Timer = () => {
   );
 };
 
-export default Timer;
+export default Trail;
