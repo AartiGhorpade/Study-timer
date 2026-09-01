@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Kitchen Timer",
-  description: "A clean digital kitchen countdown timer."
+  title: "Study Timer",
+  description: "A clean digital study countdown timer."
 };
 
 export default function RootLayout({
